@@ -19,6 +19,8 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+import ssl
+import certifi
 
 try:
     import aiohttp
@@ -37,6 +39,11 @@ SAAS_API = "https://moltbot-line.nocory.ai/api/client"
 # Configuration directory
 CONFIG_DIR = Path.home() / ".moltbot" / "line"
 LOG_FILE = CONFIG_DIR / "service.log"
+
+
+def get_ssl_context():
+    """Create SSL context with certifi"""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 class LineConnectService:
@@ -116,7 +123,8 @@ class LineConnectService:
                 return
             
             # Call SaaS API to notify users
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 encoded_url = config['tunnel_url'].replace('/', '%2F').replace(':', '%3A')
                 async with session.post(
                     f"{SAAS_API}/notify-offline",
@@ -131,7 +139,8 @@ class LineConnectService:
     async def _re_register_tunnel(self, new_url: str):
         """Re-register new tunnel URL with SaaS"""
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{SAAS_API}/update-tunnel",
                     json={"old_tunnel": load_config().get('tunnel_url'), "new_tunnel": new_url},
@@ -153,7 +162,8 @@ class LineConnectService:
             return
         
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{SAAS_API}/gateway/update",
                     json={"gateway_id": gateway_id, "tunnel_url": new_url},
@@ -183,7 +193,8 @@ class LineConnectService:
         # No gateway_id - check if there are bound users and get new gateway
         try:
             encoded_url = old_tunnel.replace('/', '%2F').replace(':', '%3A')
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
                     f"{SAAS_API}/status/{encoded_url}",
                     timeout=aiohttp.ClientTimeout(total=5)
@@ -327,7 +338,8 @@ class LineConnectService:
     async def _register_tunnel(self, tunnel_url: str) -> Optional[dict]:
         """Register tunnel with SaaS"""
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     f"{SAAS_API}/register",
                     json={"tunnel_domain": tunnel_url},
@@ -422,7 +434,8 @@ async def status():
     # Check gateway status from SaaS
     if gateway_id:
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
                     f"{SAAS_API}/gateway/{gateway_id}",
                     timeout=aiohttp.ClientTimeout(total=5)
@@ -440,7 +453,10 @@ async def status():
     tunnel_url = config.get('tunnel_url')
     if tunnel_url:
         try:
-            async with aiohttp.ClientSession() as session:
+            # Note: tunnel_url might be http or https. If https, we need valid certs.
+            # Usually trycloudflare is https.
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
                     f"{tunnel_url}/health",
                     timeout=aiohttp.ClientTimeout(total=5)
@@ -476,7 +492,8 @@ async def status():
     # Check bound users using gateway_id
     if gateway_id:
         try:
-            async with aiohttp.ClientSession() as session:
+            connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
                     f"{SAAS_API}/gateway/{gateway_id}/users",
                     timeout=aiohttp.ClientTimeout(total=5)

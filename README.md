@@ -40,7 +40,7 @@ Runs entirely on your machine. Your data stays with you.
 The easiest way to install is via our one-line installer:
 
 ```bash
-curl -fsSL https://moltbot4line.nocory.ai/ | bash
+curl -fsSL https://moltbot4line.nocory.ai/install.sh | bash
 ```
 
 ### 🛠 Usage
@@ -110,7 +110,7 @@ graph LR
 使用我們的一鍵安裝指令即可快速開始：
 
 ```bash
-curl -fsSL https://moltbot4line.nocory.ai/ | bash
+curl -fsSL https://moltbot4line.nocory.ai/install.sh | bash
 ```
 
 ### 🛠 使用說明

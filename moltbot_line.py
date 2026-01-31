@@ -322,6 +322,10 @@ class LineConnectService:
             
             print("-" * 50)
             
+            # Start monitoring for binding success
+            if not has_existing and not self.daemon_mode:
+                 asyncio.create_task(self._wait_for_binding(tunnel_url))
+
             # Start health check loop
             health_task = asyncio.create_task(self._health_check_loop())
             
@@ -355,6 +359,46 @@ class LineConnectService:
         except Exception as e:
             print(f"     ❌ Registration failed: {e}")
             return None
+
+    async def _wait_for_binding(self, tunnel_url: str):
+        """Poll specifically for new binding success (UX improvement)"""
+        print(f"\n⏳ Waiting for connection...", end="", flush=True)
+        
+        # Poll for 5 minutes (300s)
+        start_time = time.time()
+        while time.time() - start_time < 300:
+            if not self._running:
+                break
+                
+            try:
+                # Reuse the existing check logic but be quieter
+                encoded_url = tunnel_url.replace('/', '%2F').replace(':', '%3A')
+                connector = aiohttp.TCPConnector(ssl=get_ssl_context())
+                async with aiohttp.ClientSession(connector=connector) as session:
+                    async with session.get(
+                        f"{SAAS_API}/status/{encoded_url}",
+                        timeout=aiohttp.ClientTimeout(total=5)
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            users = data.get('users', [])
+                            if len(users) > 0:
+                                # SUCCESS!
+                                user = users[0]
+                                name = user.get('display_name', 'User')
+                                print("\n\n" + "=" * 50)
+                                print(f"🎉 Congratulations! Binding successful!")
+                                print(f"👤 Connected to LINE user: {name}")
+                                print("=" * 50 + "\n")
+                                return
+            except Exception:
+                pass
+            
+            # Print a dot every poll to show liveness
+            print(".", end="", flush=True)
+            await asyncio.sleep(2)
+        
+        print("\n(Stopped waiting for binding confirmation)")
     
     async def _health_check_loop(self):
         """Periodic health check"""

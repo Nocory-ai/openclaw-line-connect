@@ -104,9 +104,10 @@ class MoltbotCLIClient:
             print(f"   🚀 Invoking Moltbot: {message[:30]}... (Session: {session_id})")
             
         try:
-            # Set CI=true to suppress TUI/Doctor output if possible
+            # Set CI=true and NO_COLOR=1 to suppress TUI/Doctor output if possible
             env = os.environ.copy()
             env['CI'] = 'true'
+            env['NO_COLOR'] = '1'
             
             # Run CLI command asynchronously
             proc = await asyncio.create_subprocess_exec(
@@ -137,10 +138,13 @@ class MoltbotCLIClient:
                     if start_idx != -1 and end_idx != -1:
                         json_str = output[start_idx : end_idx + 1]
                         return json.loads(json_str)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"   ⚠️ [Debug] Fuzzy JSON parse failed: {e}")
                 
-                print(f"   ❌ Invalid JSON from CLI: {output[:100]}")
+                print(f"   ❌ Invalid JSON from CLI.")
+                print(f"   ⬇️  --- Raw Output Start ---")
+                print(output)
+                print(f"   ⬆️  --- Raw Output End ---")
                 return {'ok': False, 'error': 'Invalid CLI output'}
                 
         except Exception as e:

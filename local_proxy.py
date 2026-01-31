@@ -8,6 +8,9 @@ import asyncio
 import uuid
 import subprocess
 import shlex
+import shutil
+import os
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 try:
@@ -23,6 +26,44 @@ class MoltbotCLIClient:
     
     def __init__(self, ui_controller=None):
         self.ui = ui_controller
+        self._cached_executable = None
+
+    def _detect_executable(self) -> Optional[str]:
+        """Detect available installed binary"""
+        if self._cached_executable:
+            return self._cached_executable
+            
+        candidates = ['clawdbot', 'openclaw', 'moltbot']
+        for binary in candidates:
+            if shutil.which(binary):
+                if self.ui:
+                    self.ui.log(f"Detected local agent: {binary}", "DEBUG")
+                self._cached_executable = binary
+                return binary
+        
+        # Also check common locations if not in PATH
+        home = Path.home()
+        paths = [
+            # User Go bin
+            home / "go/bin/clawdbot",
+            home / "go/bin/openclaw",
+            home / "go/bin/moltbot",
+            # Standard locations
+            Path("/usr/local/bin/clawdbot"),
+            Path("/usr/local/bin/openclaw"),
+            Path("/usr/local/bin/moltbot"),
+            # Apple Silicon Homebrew
+            Path("/opt/homebrew/bin/clawdbot"),
+            Path("/opt/homebrew/bin/openclaw"),
+            Path("/opt/homebrew/bin/moltbot"),
+        ]
+        
+        for path in paths:
+            if path.exists() and os.access(path, os.X_OK):
+                self._cached_executable = str(path)
+                return str(path)
+                
+        return None
 
     async def run_agent(self, message: str, user_id: str, metadata: dict = None) -> dict:
         """Run agent with a message via CLI"""
@@ -43,9 +84,14 @@ class MoltbotCLIClient:
         
         params_json = json.dumps(params)
         
+        # Detect executable
+        executable = self._detect_executable()
+        if not executable:
+            return {'ok': False, 'error': 'Moltbot/OpenClaw executable not found via CLI'}
+
         # Construct command
         cmd = [
-            'clawdbot', 'gateway', 'call', 'agent',
+            executable, 'gateway', 'call', 'agent',
             '--params', params_json,
             '--expect-final',
             '--timeout', '120000',

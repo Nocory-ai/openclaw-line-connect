@@ -40,6 +40,7 @@ SAAS_API = "https://moltbot-line.nocory.ai/api/client"
 # Configuration directory
 CONFIG_DIR = Path.home() / ".moltbot" / "line"
 LOG_FILE = CONFIG_DIR / "service.log"
+LOCK_FILE = CONFIG_DIR / "moltbot.lock"
 
 
 def get_ssl_context():
@@ -398,14 +399,26 @@ class LineConnectService:
 
 async def connect():
     """Start binding flow"""
-    service = LineConnectService(daemon_mode=False)
-    await service.start()
+    if not acquire_lock():
+        return
+        
+    try:
+        service = LineConnectService(daemon_mode=False)
+        await service.start()
+    finally:
+        release_lock()
 
 
 async def daemon():
     """Background service mode"""
-    service = LineConnectService(daemon_mode=True)
-    await service.start()
+    if not acquire_lock():
+        return
+        
+    try:
+        service = LineConnectService(daemon_mode=True)
+        await service.start()
+    finally:
+        release_lock()
 
 
 async def status():
@@ -586,6 +599,47 @@ def load_config() -> Optional[dict]:
         except Exception:
             return None
     return None
+
+
+def acquire_lock() -> bool:
+    """Ensure single instance using PID lock file"""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    
+    if LOCK_FILE.exists():
+        try:
+            pid = int(LOCK_FILE.read_text().strip())
+            # Check if process is still running
+            os.kill(pid, 0)
+            print(f"\n⚠️  Service is already running (PID: {pid})")
+            print("   Please stop it first or run 'moltbot-line status'")
+            return False
+        except (ValueError, ProcessLookupError, OSError):
+            # PID file is corrupt or process is dead - remove stale lock
+            try:
+                LOCK_FILE.unlink()
+                print("🧹 Removed stale lock file")
+            except Exception:
+                pass
+    
+    # Create lock
+    try:
+        LOCK_FILE.write_text(str(os.getpid()))
+        return True
+    except Exception as e:
+        print(f"❌ Failed to create lock file: {e}")
+        return False
+
+
+def release_lock():
+    """Remove lock file"""
+    try:
+        if LOCK_FILE.exists():
+            # Only remove if it contains our PID
+            pid = int(LOCK_FILE.read_text().strip())
+            if pid == os.getpid():
+                LOCK_FILE.unlink()
+    except Exception:
+        pass
 
 
 def uninstall():

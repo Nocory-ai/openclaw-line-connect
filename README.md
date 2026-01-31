@@ -73,6 +73,13 @@ Tail the real-time logs of the service.
 moltbot-line logs
 ```
 
+#### Uninstall
+Remove the application and configuration.
+
+```bash
+moltbot-line uninstall
+```
+
 ### 🏗 Architecture
 
 ```mermaid
@@ -143,6 +150,13 @@ moltbot-line status
 moltbot-line logs
 ```
 
+#### 移除安裝
+移除應用程式與所有設定。
+
+```bash
+moltbot-line uninstall
+```
+
 ---
 
 ## 📖 概要
@@ -195,6 +209,13 @@ moltbot-line status
 
 ```bash
 moltbot-line logs
+```
+
+#### アンインストール
+アプリケーションと設定を削除します。
+
+```bash
+moltbot-line uninstall
 ```
 
 ---

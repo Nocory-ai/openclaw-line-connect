@@ -13,6 +13,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import shutil
 import sys
 import os
 import time
@@ -587,6 +588,50 @@ def load_config() -> Optional[dict]:
     return None
 
 
+def uninstall():
+    """Uninstall the application"""
+    print("\n🦞 Moltbot LINE Connect - Uninstall")
+    print("=" * 50)
+    
+    # Confirm
+    print("\n⚠️  WARNING: This will remove:")
+    print(f"   1. The application directory: {CONFIG_DIR}")
+    print("   2. Configuration and logs")
+    print("   3. The 'moltbot-line' command")
+    print("\n   It will NOT undo the PATH change in your shell config (for safety).")
+    
+    confirm = input("\nAre you sure you want to continue? [y/N] ").strip().lower()
+    if confirm != 'y':
+        print("Cancelled.")
+        return
+
+    # Try to locate the binary (symlink or script)
+    # We assume standard install location ~/.local/bin/moltbot-line
+    bin_path = Path.home() / ".local" / "bin" / "moltbot-line"
+    
+    try:
+        if bin_path.exists():
+            bin_path.unlink()
+            print(f"\n✅ Removed command: {bin_path}")
+        else:
+            print(f"\n⚠️ Command not found at {bin_path} (skipping)")
+            
+        # Remove config dir
+        if CONFIG_DIR.exists():
+            shutil.rmtree(CONFIG_DIR)
+            print(f"✅ Removed directory: {CONFIG_DIR}")
+        else:
+            print(f"⚠️ Directory not found: {CONFIG_DIR} (skipping)")
+            
+        print("\n✨ Uninstallation complete.")
+        print("\nTo finish cleanup, please remove the following line from your shell config (.zshrc/.bashrc):")
+        print('   export PATH="$HOME/.local/bin:$PATH"')
+        print()
+        
+    except Exception as e:
+        print(f"\n❌ Error during uninstall: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Moltbot LINE Connect - Connect LINE to your Moltbot (with auto-reconnect)',
@@ -608,6 +653,7 @@ Examples:
     subparsers.add_parser('status', help='Check connection status')
     subparsers.add_parser('logs', help='View service logs')
     subparsers.add_parser('disconnect', help='Disconnect from service')
+    subparsers.add_parser('uninstall', help='Uninstall application')
     
     args = parser.parse_args()
     
@@ -621,6 +667,8 @@ Examples:
         asyncio.run(logs())
     elif args.command == 'disconnect':
         asyncio.run(disconnect())
+    elif args.command == 'uninstall':
+        uninstall()
     else:
         parser.print_help()
 

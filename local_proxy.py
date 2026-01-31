@@ -104,11 +104,16 @@ class MoltbotCLIClient:
             print(f"   🚀 Invoking Moltbot: {message[:30]}... (Session: {session_id})")
             
         try:
+            # Set CI=true to suppress TUI/Doctor output if possible
+            env = os.environ.copy()
+            env['CI'] = 'true'
+            
             # Run CLI command asynchronously
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                env=env
             )
             
             stdout, stderr = await proc.communicate()
@@ -125,6 +130,16 @@ class MoltbotCLIClient:
                 result = json.loads(output)
                 return result
             except json.JSONDecodeError:
+                # Try to extract JSON from mixed output (e.g. Doctor warnings)
+                try:
+                    start_idx = output.find('{')
+                    end_idx = output.rfind('}')
+                    if start_idx != -1 and end_idx != -1:
+                        json_str = output[start_idx : end_idx + 1]
+                        return json.loads(json_str)
+                except Exception:
+                    pass
+                
                 print(f"   ❌ Invalid JSON from CLI: {output[:100]}")
                 return {'ok': False, 'error': 'Invalid CLI output'}
                 

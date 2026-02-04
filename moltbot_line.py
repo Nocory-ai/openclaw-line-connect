@@ -391,8 +391,13 @@ class LineConnectService:
                                 print(f"👤 Connected to LINE user: {name}")
                                 print("=" * 50 + "\n")
                                 return
-            except Exception:
-                pass
+            except Exception as e:
+                # Only print specific connection errors if verbose, otherwise silent to avoid spam
+                # But for debugging this issue, we will log it locally
+                if "ClientConnectorCertificateError" in str(e):
+                    print(f"\n❌ SSL Error: {e}")
+                    break # Stop if SSL error, as it won't recover
+
             
             # Print a dot every poll to show liveness
             print(".", end="", flush=True)

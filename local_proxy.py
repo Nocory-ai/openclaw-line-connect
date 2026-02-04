@@ -282,8 +282,16 @@ class LocalProxy:
         await self.runner.setup()
         
         # Use reuse_address to avoid 'Address already in use' errors
-        site = web.TCPSite(self.runner, '127.0.0.1', self.port, reuse_address=True, reuse_port=True)
-        await site.start()
+        import platform
+        reuse_port = True if platform.system() != 'Windows' else False
+        
+        try:
+            site = web.TCPSite(self.runner, '127.0.0.1', self.port, reuse_address=True, reuse_port=reuse_port)
+            await site.start()
+        except TypeError:
+            # Fallback for older aiohttp versions or systems that don't support reuse_port kwarg
+            site = web.TCPSite(self.runner, '127.0.0.1', self.port, reuse_address=True)
+            await site.start()
     
     async def stop(self):
         """Stop the proxy server"""

@@ -14,18 +14,19 @@ try:
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich.theme import Theme
     from rich import print as rprint
+
+    # Custom theme for brand colors
+    THEME = Theme({
+        "info": "bold cyan",
+        "warning": "bold yellow",
+        "error": "bold red",
+        "success": "bold green",
+        "timestamp": "dim white"
+    })
 except ImportError:
     # Fallback for plain text if rich is missing (will just print)
     Console = None
-
-# Custom theme for brand colors
-THEME = Theme({
-    "info": "bold cyan",
-    "warning": "bold yellow",
-    "error": "bold red",
-    "success": "bold green",
-    "timestamp": "dim white"
-})
+    THEME = None
 
 class UIController:
     """Manages the UI output using Rich"""

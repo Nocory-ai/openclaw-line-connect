@@ -68,8 +68,9 @@ class MoltbotCLIClient:
     async def run_agent(self, message: str, user_id: str, metadata: dict = None) -> dict:
         """Run agent with a message via CLI"""
         
-        # Use line: prefix for session ID to isolate LINE users
-        session_id = f"line:{user_id}"
+        # Use line_ prefix for session ID to isolate LINE users
+        # Note: colon (:) is not allowed in session IDs by the CLI
+        session_id = f"line_{user_id}"
         run_id = str(uuid.uuid4())
         
         # Prepend context to message since we can't pass 'context' param
